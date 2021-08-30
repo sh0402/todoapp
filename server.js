@@ -3,8 +3,11 @@ const app = express();
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: true }));
 const MongoClient = require('mongodb').MongoClient;
+const methodOverride = require('method-override');
+app.use(methodOverride('_method'));
 app.set('view engine', 'ejs');
 app.use('/public', express.static('public'));
+
 
 var db;
 MongoClient.connect('mongodb+srv://dg0402:1q2w3e@cluster0.vaark.mongodb.net/myFirstDatabase?retryWrites=true&w=majority', function(err, client) {
@@ -71,5 +74,12 @@ app.get('/detail/:id', function(req, res){
     db.collection('post').findOne({_id : parseInt(req.params.id)}, function(err, result) {
         console.log(result);
         res.render('detail.ejs', { data : result });
+    });
+});
+
+app.get('/edit/:id', function(req, res){
+    db.collection('post').findOne({_id : parseInt(req.params.id)}, function(err, result) {
+        console.log(result);
+        res.render('edit.ejs', { post: result });
     });
 });
