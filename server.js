@@ -29,30 +29,6 @@ app.get('/write', function (req, res) {
     res.render('write.ejs');
 });
 
-
-app.post('/add', function (req, res) {
-    res.send('전송완료');
-   
- 
-    db.collection('counter').findOne({name : 'numberOfPost'}, function (err,result) {
-        console.log(result.totalPost);
-
-        // numberOfPost = 총게시물갯수 / 
-        var numberOfPost = result.totalPost;
-
-        db.collection('post').insertOne({_id : numberOfPost + 1, 제목 : req.body.title, 날짜 : req.body.date}, function(err, result) {
-            console.log('저장완료')
-            // couter라는 콜렉션에 있는 totalPost 라는 항목도 1 증가 시켜야함 (수정);
-
-            db.collection('counter').updateOne({name : 'numberOfPost'}, {$inc : {totalPost : 1}}, function(err, result) {
-                if (err) {return console.log(err);}
-            });
-        });
-
-    });
-});
-
-
 app.get('/list', function(req, res) {
     db.collection('post').find().toArray(function(err, result) {
         console.log(result);
@@ -61,14 +37,7 @@ app.get('/list', function(req, res) {
 });
 
 
-app.delete('/delete', function(req, res) {
-    console.log(req.body);
-    req.body._id = parseInt(req.body._id)
-    db.collection('post').deleteOne(req.body, function(err, result) {
-        console.log('삭제되었습니다')
-        res.status(200).send({message : '성공했습니다.'})
-    });
-});
+
 
 // /detail 로 접속하면 detail.ejs 보여줌
 
@@ -134,6 +103,10 @@ app.use(session({secret: '비밀코드', resave: true, saveUninitialized: false}
 app.use(passport.initialize());
 app.use(passport.session());
 
+//ROUTES
+app.use('/shop', require('./routes/shop.js')); //SHOP
+app.use('/board/sub', require('./routes/board.js')); //SHOP
+
 
 app.get('/login', function (req, res){
     res.render('login.ejs')
@@ -191,3 +164,100 @@ passport.deserializeUser(function (id, done){
         done(null, result)
     })
 });
+
+app.post('/register', function (req, res){
+    db.collection('login').insertOne({ id : req.body.id, pw : req.body.pw }, function (err, result){
+        res.redirect('/');
+    })
+});
+
+app.post('/add', function (req, res) {
+    
+    res.send('전송완료');
+ 
+    db.collection('counter').findOne({name : 'numberOfPost'}, function (err,result) {
+        console.log(result.totalPost);
+
+        // numberOfPost = 총게시물갯수 / 
+        var numberOfPost = result.totalPost;
+
+        var 저장할거 = {
+            _id: numberOfPost + 1,
+            작성자: req.user._id,
+            제목: req.body.title,
+            날짜: req.body.date
+        }
+
+        db.collection('post').insertOne({
+            _id: numberOfPost + 1,
+            작성자: req.user._id,
+            제목: req.body.title,
+            날짜: req.body.date
+        }, function (err, result) {
+            console.log('저장완료')
+            // couter라는 콜렉션에 있는 totalPost 라는 항목도 1 증가 시켜야함 (수정);
+
+            db.collection('counter').updateOne({
+                name: 'numberOfPost'
+            }, {
+                $inc: {
+                    totalPost: 1
+                }
+            }, function (err, result) {
+                if (err) {
+                    return console.log(err);
+                }
+            });
+        });
+
+    });
+});
+
+
+app.delete('/delete', function (req, res) {
+    console.log(req.body);
+    req.body._id = parseInt(req.body._id);
+
+    var deleteData = {
+        _id: req.body._id,
+        작성자: req.user._id
+    }
+
+    db.collection('post').deleteOne(deleteData, function (err, result) {
+        console.log('삭제되었습니다');
+        if(result) {console.log(result)}
+        res.status(200).send({
+            message: '성공했습니다.'
+        })
+    });
+});
+
+
+
+let multer = require('multer');
+var storage = multer.diskStorage({
+    destination : function (req, file, cb) {
+        cb(null, './public/image')
+    },
+    filename : function (req, file, cb) {
+        cb(null, file.originalname)
+    },
+    filefilter : function (req, file, cb) {
+
+    }
+});
+
+var upload = multer({storage : storage});
+
+app.get('/upload', function(req, res){
+    res.render('upload.ejs')
+});
+
+app.post('/upload', upload.single('profile'), function(req, res){
+    res.send('업로드완료')
+}); 
+
+app.get('/image/:imageName', function (req, res){
+    res.sendFile(__dirname + '/public/image/' + res.params.imageName);
+});
+
